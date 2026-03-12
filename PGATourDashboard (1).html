@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PGA Tour Model Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0a0e17;--surface:#111827;--surface2:#1a2235;--border:#1e293b;--text:#e2e8f0;--muted:#64748b;--accent:#3b82f6;--accent2:#8b5cf6;--green:#22c55e;--yellow:#eab308;--orange:#f97316;--red:#ef4444;--radius:12px; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;line-height:1.5}
+  .noise{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.03;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+  .app{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:24px 20px 60px}
+  .header{margin-bottom:28px}.header-top{display:flex;align-items:center;gap:16px;margin-bottom:8px}
+  .header-icon{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 30px rgba(59,130,246,.2)}
+  .header h1{font-size:26px;font-weight:700;letter-spacing:-.5px}.header .sub{font-size:13px;color:var(--muted);margin-top:2px}
+  .header .meta{display:flex;gap:16px;margin-top:12px;font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace;flex-wrap:wrap}
+  .header .meta span{background:var(--surface);padding:4px 10px;border-radius:6px;border:1px solid var(--border)}
+  .tabs{display:flex;gap:4px;margin-bottom:24px;background:var(--surface);padding:4px;border-radius:10px;border:1px solid var(--border);width:fit-content}
+  .tab{padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:0 0;color:var(--muted);transition:.2s;font-family:'DM Sans',sans-serif}
+  .tab:hover{color:var(--text)}.tab.active{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(59,130,246,.3)}
+  .upload-bar{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surface);border:1px dashed var(--border);border-radius:10px;margin-bottom:16px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+  .upload-bar input[type=file]{display:none}
+  .upload-btn{padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:.2s;font-family:'DM Sans',sans-serif;border:1px solid var(--accent);background:0 0;color:var(--accent)}
+  .upload-btn:hover{background:var(--accent);color:#fff}
+  .upload-btn.sb{border-color:var(--accent2);color:var(--accent2)}.upload-btn.sb:hover{background:var(--accent2);color:#fff}
+  .upload-status{font-family:'JetBrains Mono',monospace;font-size:11px}.upload-divider{width:1px;height:24px;background:var(--border)}
+  .table-controls{display:flex;gap:12px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
+  .search-box{padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;width:240px;font-family:'DM Sans',sans-serif;outline:0}
+  .search-box:focus{border-color:var(--accent)}
+  .filter-btn{padding:6px 14px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;transition:.15s;font-family:'DM Sans',sans-serif}
+  .filter-btn:hover,.filter-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(59,130,246,.08)}
+  .pred-table{width:100%;border-collapse:collapse;font-size:13px}
+  .pred-table thead{position:sticky;top:0;z-index:2}
+  .pred-table th{text-align:left;padding:10px 12px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;background:var(--bg);border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap}
+  .pred-table th:hover{color:var(--accent)}.pred-table th.sorted{color:var(--accent)}
+  .pred-table td{padding:9px 12px;border-bottom:1px solid rgba(30,41,59,.5);white-space:nowrap}
+  .pred-table tr:hover td{background:rgba(59,130,246,.04)}
+  .tier-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace}
+  .tier-elite{background:rgba(34,197,94,.12);color:#86efac}.tier-contender{background:rgba(59,130,246,.12);color:#93c5fd}
+  .tier-mid{background:rgba(234,179,8,.12);color:#fde68a}.tier-long{background:rgba(249,115,22,.12);color:#fdba74}
+  .tier-field{background:rgba(100,116,139,.12);color:#94a3b8}
+  .prob-bar{height:6px;border-radius:3px;background:var(--surface2);overflow:hidden;min-width:60px;display:inline-block;vertical-align:middle}
+  .prob-bar-fill{height:100%;border-radius:3px;transition:width .3s}
+  .table-scroll{max-height:620px;overflow-y:auto;border-radius:var(--radius);border:1px solid var(--border)}
+  .table-scroll::-webkit-scrollbar{width:6px}.table-scroll::-webkit-scrollbar-track{background:var(--surface)}.table-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  .compare-grid{display:grid;grid-template-columns:280px 1fr;gap:20px}
+  .player-selector{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;max-height:650px;overflow-y:auto}
+  .player-selector::-webkit-scrollbar{width:5px}.player-selector::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  .player-selector h3{font-size:13px;font-weight:600;color:var(--muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
+  .player-option{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:.15s;margin-bottom:4px;font-size:13px;border:1px solid transparent}
+  .player-option:hover{background:var(--surface2)}.player-option.selected{background:rgba(59,130,246,.1);border-color:rgba(59,130,246,.3)}
+  .player-option .dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--muted);flex-shrink:0}
+  .player-option.selected .dot{background:var(--accent);border-color:var(--accent)}
+  .player-option .prank{font-family:'JetBrains Mono',monospace;color:var(--muted);font-size:11px;min-width:28px}
+  .compare-charts{display:flex;flex-direction:column;gap:20px}
+  .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+  .chart-card h3{font-size:14px;font-weight:600;margin-bottom:16px}
+  .chart-container{position:relative;height:340px}
+  .compare-stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+  .stat-compare-card{background:var(--surface2);border-radius:10px;padding:14px}
+  .stat-compare-card .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+  .stat-compare-card .val-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:3px}
+  .stat-compare-card .num{font-family:'JetBrains Mono',monospace;font-weight:600}
+  .stat-compare-card .best{color:var(--green)}
+  .legend-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+  .select-box{padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:0;cursor:pointer}
+  .select-box:focus{border-color:var(--accent)}
+  .explorer-controls{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+  .bar-chart-container{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+  .bar-chart-inner{position:relative;height:500px}
+  .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px;color:var(--muted);font-size:14px;gap:8px}
+  .empty-state .icon{font-size:40px;opacity:.5}
+  .chart-toggle{display:flex;gap:4px;margin-bottom:12px}
+  .chart-toggle button{padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--muted);transition:.15s;font-family:'DM Sans',sans-serif}
+  .chart-toggle button.active{border-color:var(--accent);color:var(--accent);background:rgba(59,130,246,.08)}
+  .section-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;font-weight:600}
+  @media(max-width:900px){.compare-grid{grid-template-columns:1fr}.player-selector{max-height:200px}}
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<div class="app">
+  <div class="header">
+    <div class="header-top"><div class="header-icon">⛳</div><div><h1>2026 THE PLAYERS Championship</h1><div class="sub">TPC Sawgrass · Ponte Vedra Beach, FL · Model Predictions Dashboard</div></div></div>
+    <div class="meta"><span id="metaField">117 players</span><span>100K sims</span><span>Cut: Top 65</span><span id="statsStatus">Raw stats: upload CSV</span></div>
+  </div>
+  <div class="upload-bar">
+    <label class="upload-btn" for="csvUpload">📊 Predictions CSV</label><input type="file" id="csvUpload" accept=".csv"><span class="upload-status" id="uploadStatus"></span>
+    <div class="upload-divider"></div>
+    <label class="upload-btn sb" for="statsUpload">🔬 Stats CSV</label><input type="file" id="statsUpload" accept=".csv"><span class="upload-status" id="statsUploadStatus"></span>
+    <span style="font-size:11px;color:var(--muted)">Add <code style="color:var(--accent2)">player_stats.csv</code> for raw stat comparisons</span>
+  </div>
+  <div class="tabs">
+    <button class="tab active" data-tab="predictions">Predictions</button>
+    <button class="tab" data-tab="compare">Compare Players</button>
+    <button class="tab" data-tab="explorer">Stats Explorer</button>
+  </div>
+  <div id="tab-predictions" class="tab-content">
+    <div class="table-controls">
+      <input class="search-box" type="text" id="searchInput" placeholder="Search players...">
+      <button class="filter-btn active" data-filter="all">All</button><button class="filter-btn" data-filter="elite">Top 5</button><button class="filter-btn" data-filter="contender">Top 20</button><button class="filter-btn" data-filter="bubble">Cut Bubble</button><button class="filter-btn" data-filter="longshot">Longshots</button>
+    </div>
+    <div class="table-scroll"><table class="pred-table"><thead><tr>
+      <th data-sort="rank" class="sorted">Rank <span class="arrow">▲</span></th><th data-sort="name">Player</th><th data-sort="avgFinish">Avg Finish</th><th data-sort="top5">Top 5%</th><th data-sort="top10">Top 10%</th><th data-sort="top20">Top 20%</th><th data-sort="cut">Cut%</th><th>Tier</th>
+    </tr></thead><tbody id="predBody"></tbody></table></div>
+  </div>
+  <div id="tab-compare" class="tab-content" style="display:none">
+    <div class="compare-grid">
+      <div class="player-selector"><h3>Select up to 3 players</h3><input class="search-box" type="text" id="compareSearch" placeholder="Search..." style="width:100%;margin-bottom:12px"><div id="compareList"></div></div>
+      <div class="compare-charts">
+        <div class="chart-card"><h3>Outcome Probabilities</h3><div class="chart-container"><canvas id="compareBarChart"></canvas></div></div>
+        <div class="chart-card"><h3>Stat Profile Radar</h3>
+          <div class="chart-toggle" id="radarToggle"><button class="active" data-mode="predictions">Predictions</button><button data-mode="raw">Raw Stats</button></div>
+          <div class="chart-container"><canvas id="compareRadar"></canvas></div>
+          <div id="noStatsMsg" style="display:none;text-align:center;padding:20px;color:var(--muted);font-size:13px">Upload <code style="color:var(--accent2)">player_stats.csv</code> to see raw stat radar</div>
+        </div>
+        <div class="section-label" style="margin-top:8px">Head-to-Head Breakdown</div>
+        <div id="compareStatsGrid" class="compare-stats-grid"></div>
+      </div>
+    </div>
+  </div>
+  <div id="tab-explorer" class="tab-content" style="display:none">
+    <div class="explorer-controls">
+      <select class="select-box" id="explorerStat">
+        <optgroup label="Model Predictions"><option value="top5">Top 5 %</option><option value="top10">Top 10 %</option><option value="top20">Top 20 %</option><option value="cut">Cut %</option><option value="avgFinish">Avg Finish</option></optgroup>
+        <optgroup label="Raw Stats (upload CSV)" id="rawStatsGroup"></optgroup>
+      </select>
+      <select class="select-box" id="explorerCount"><option value="15">Top 15</option><option value="25" selected>Top 25</option><option value="40">Top 40</option><option value="all">All (Cut Likely)</option></select>
+    </div>
+    <div class="bar-chart-container"><div class="bar-chart-inner"><canvas id="explorerChart"></canvas></div></div>
+  </div>
+</div>
+<script>
+const P=[{r:1,n:"Scottie Scheffler",af:3.2,t5:88.5,t10:95.3,t20:98.5,c:99.5},{r:2,n:"Rory McIlroy",af:5.2,t5:78.3,t10:89.8,t20:96.2,c:98.9},{r:3,n:"Collin Morikawa",af:21,t5:28.8,t10:47.9,t20:68.7,c:91.4},{r:4,n:"Haotong Li",af:29.5,t5:16.4,t10:31.9,t20:53.2,c:86},{r:5,n:"Si Woo Kim",af:30.8,t5:13.9,t10:28.4,t20:49.1,c:84.3},{r:6,n:"Shane Lowry",af:31.3,t5:10.9,t10:23.5,t20:43.3,c:81.5},{r:7,n:"Xander Schauffele",af:33.8,t5:10.9,t10:23.7,t20:43.5,c:81.5},{r:8,n:"Tommy Fleetwood",af:33.9,t5:12.8,t10:26.4,t20:46.9,c:83.3},{r:9,n:"Russell Henley",af:33.9,t5:13.8,t10:28.2,t20:49.2,c:84.2},{r:10,n:"Hideki Matsuyama",af:34.6,t5:13.7,t10:28,t20:48.7,c:83.9},{r:11,n:"Akshay Bhatia",af:36.4,t5:13.5,t10:27.5,t20:47.9,c:83.9},{r:12,n:"Patrick Cantlay",af:37.2,t5:8.1,t10:18.6,t20:36.6,c:78.1},{r:13,n:"Ludvig Åberg",af:38.5,t5:5.6,t10:13.8,t20:29.6,c:74},{r:14,n:"Viktor Hovland",af:39,t5:7.7,t10:18.1,t20:36,c:77.6},{r:15,n:"Nicolai Højgaard",af:39.3,t5:6.7,t10:15.8,t20:32.4,c:75.5},{r:16,n:"J.J. Spaun",af:40.8,t5:8.8,t10:20.1,t20:38.6,c:78.9},{r:17,n:"Kurt Kitayama",af:40.8,t5:8.7,t10:19.8,t20:38.5,c:79.1},{r:18,n:"Austin Smotherman",af:41.8,t5:4.2,t10:11,t20:24.9,c:70.2},{r:19,n:"Johnny Keefer",af:42.7,t5:3.5,t10:9.8,t20:22.8,c:68.7},{r:20,n:"Sudarshan Yellamaraju",af:43.1,t5:3,t10:8.5,t20:20.5,c:66.6},{r:21,n:"Corey Conners",af:43.3,t5:3.4,t10:9.2,t20:21.9,c:67.8},{r:22,n:"Robert MacIntyre",af:43.8,t5:5.3,t10:13.4,t20:28.9,c:73.5},{r:23,n:"Maverick McNealy",af:44,t5:3,t10:8.3,t20:20.3,c:66.7},{r:24,n:"Alex Noren",af:44.2,t5:4.6,t10:12,t20:26.5,c:71.3},{r:25,n:"Chris Gotterup",af:44.5,t5:3.7,t10:10.1,t20:23.5,c:69.1},{r:26,n:"Mac Meissner",af:45.7,t5:3.2,t10:9.1,t20:21.6,c:67.4},{r:27,n:"Kevin Roy",af:46.5,t5:2.2,t10:6.2,t20:16.1,c:62.2},{r:28,n:"Jordan Smith",af:46.7,t5:2.4,t10:7.2,t20:18,c:64.5},{r:29,n:"Keith Mitchell",af:47.5,t5:4.8,t10:12.1,t20:26.8,c:71.9},{r:30,n:"Sepp Straka",af:47.8,t5:6.4,t10:15.4,t20:32.1,c:75.4},{r:31,n:"Justin Thomas",af:47.9,t5:3.9,t10:10.5,t20:24.1,c:69.7},{r:32,n:"Cameron Young",af:49,t5:3.4,t10:9.3,t20:21.9,c:67.8},{r:33,n:"Matt Fitzpatrick",af:49.1,t5:2.6,t10:7.5,t20:18.7,c:64.9},{r:34,n:"Lucas Glover",af:49.1,t5:2.5,t10:7,t20:17.8,c:64.2},{r:35,n:"Ryo Hisatsune",af:49.5,t5:2.1,t10:6.4,t20:16.5,c:62.6},{r:36,n:"Ricky Castillo",af:49.8,t5:2.5,t10:7.3,t20:18.5,c:64.8},{r:37,n:"Lee Hodges",af:50.1,t5:2.4,t10:6.9,t20:17.8,c:63.8},{r:38,n:"Pierceson Coody",af:51.6,t5:3.8,t10:10.5,t20:24.1,c:69.9},{r:39,n:"Daniel Berger",af:51.9,t5:4,t10:10.9,t20:24.9,c:70.1},{r:40,n:"A.J. Ewart",af:51.9,t5:2.6,t10:7.5,t20:18.6,c:64.9},{r:41,n:"Jake Knapp",af:52.2,t5:4.3,t10:11.2,t20:25.2,c:70.9},{r:42,n:"Rickie Fowler",af:52.4,t5:2,t10:5.9,t20:15.6,c:61.7},{r:43,n:"Aaron Rai",af:52.5,t5:3,t10:8.3,t20:20.3,c:66.2},{r:44,n:"Ben Griffin",af:52.6,t5:4.8,t10:12.3,t20:27,c:72},{r:45,n:"Michael Thorbjornsen",af:52.9,t5:1.1,t10:3.8,t20:11.2,c:55.5},{r:46,n:"Taylor Pendrith",af:53.1,t5:2.4,t10:7.1,t20:17.9,c:63.9},{r:47,n:"Jacob Bridgeman",af:53.5,t5:3,t10:8.2,t20:20.1,c:66.3},{r:48,n:"Harris English",af:55,t5:2,t10:5.8,t20:15.4,c:61.4},{r:49,n:"Sam Stevens",af:55,t5:1,t10:3.3,t20:9.9,c:53.8},{r:50,n:"Matt McCarty",af:55.1,t5:1.2,t10:4.1,t20:11.8,c:57},{r:51,n:"Nick Taylor",af:55.7,t5:2.1,t10:6.5,t20:16.7,c:62.9},{r:52,n:"Brooks Koepka",af:56.2,t5:1.7,t10:5.3,t20:14.4,c:60.3},{r:53,n:"Jordan Spieth",af:56.8,t5:1.8,t10:5.5,t20:14.8,c:60.8},{r:54,n:"Adam Scott",af:57,t5:3.8,t10:10.1,t20:23.4,c:69.2},{r:55,n:"Tony Finau",af:57,t5:.9,t10:3,t20:9,c:52.6},{r:56,n:"Michael Kim",af:57.2,t5:.6,t10:2.2,t20:7.1,c:48.6},{r:57,n:"Max McGreevy",af:57.2,t5:.3,t10:1.3,t20:4.6,c:42.6},{r:58,n:"Ryan Gerard",af:57.2,t5:3,t10:8.2,t20:20.3,c:66.6},{r:59,n:"Patrick Rodgers",af:57.7,t5:.9,t10:3,t20:9.1,c:52.5},{r:60,n:"J.T. Poston",af:58.3,t5:.4,t10:1.3,t20:4.9,c:43.3},{r:61,n:"Sahith Theegala",af:58.5,t5:.6,t10:2.2,t20:7.4,c:49.6},{r:62,n:"Michael Brennan",af:58.9,t5:.2,t10:.7,t20:2.9,c:37.1},{r:63,n:"Sami Valimaki",af:59.1,t5:.5,t10:1.8,t20:6,c:46.2},{r:64,n:"Alex Smalley",af:59.2,t5:1.9,t10:5.6,t20:14.7,c:60.8},{r:65,n:"Harry Hall",af:59.8,t5:2.4,t10:7,t20:17.8,c:64},{r:66,n:"Jason Day",af:59.9,t5:1,t10:3.4,t20:10.1,c:54.3},{r:67,n:"Mackenzie Hughes",af:59.9,t5:.3,t10:1.3,t20:4.5,c:42.3},{r:68,n:"Sam Burns",af:60.1,t5:1.6,t10:5,t20:13.7,c:59.5},{r:69,n:"Stephan Jaeger",af:60.1,t5:.7,t10:2.7,t20:8.3,c:51.4},{r:70,n:"Eric Cole",af:60.5,t5:.2,t10:1,t20:3.7,c:39.7},{r:71,n:"Zecheng Dou",af:60.7,t5:2.8,t10:8.1,t20:19.7,c:66.2},{r:72,n:"Chandler Phillips",af:61.2,t5:.1,t10:.5,t20:2.2,c:33.1},{r:73,n:"Tom Hoge",af:61.3,t5:.6,t10:2.1,t20:6.9,c:48.3},{r:74,n:"Rico Hoey",af:61.8,t5:1.4,t10:4.3,t20:12.2,c:57.3},{r:75,n:"Christiaan Bezuidenhout",af:62.2,t5:1.2,t10:3.8,t20:11,c:55.8},{r:76,n:"Nico Echavarria",af:62.2,t5:.3,t10:1.2,t20:4.2,c:41.4},{r:77,n:"Max Greyserman",af:63.5,t5:.3,t10:1.2,t20:4.4,c:42.2},{r:78,n:"Joel Dahmen",af:63.9,t5:1.1,t10:3.7,t20:11.1,c:55.7},{r:79,n:"Keegan Bradley",af:64.1,t5:2,t10:5.9,t20:15.7,c:62.1},{r:80,n:"Bud Cauley",af:64.5,t5:1.9,t10:5.8,t20:15.4,c:61.6},{r:81,n:"Min Woo Lee",af:66.4,t5:1.1,t10:3.7,t20:10.5,c:55},{r:82,n:"Gary Woodland",af:66.6,t5:.3,t10:1.1,t20:4.2,c:41.5},{r:83,n:"Garrick Higgo",af:67,t5:0,t10:.2,t20:1.1,c:27.1},{r:84,n:"Sungjae Im",af:67.6,t5:.5,t10:1.8,t20:6.2,c:46.8},{r:85,n:"Ryan Fox",af:67.7,t5:1.3,t10:4.4,t20:12.2,c:57.6},{r:86,n:"Kevin Yu",af:67.7,t5:.9,t10:3,t20:9.2,c:52.6},{r:87,n:"Steven Fisk",af:68.8,t5:.4,t10:1.7,t20:5.8,c:45.5},{r:88,n:"Denny McCarthy",af:69.3,t5:.7,t10:2.5,t20:8,c:50.5},{r:89,n:"Seamus Power",af:70.2,t5:.8,t10:2.7,t20:8.5,c:51.4},{r:90,n:"Chad Ramey",af:70.7,t5:.1,t10:.6,t20:2.4,c:34.4},{r:91,n:"Matti Schmid",af:71.2,t5:.1,t10:.6,t20:2.5,c:34.6},{r:92,n:"Chris Kirk",af:71.5,t5:.5,t10:1.8,t20:6.2,c:46.7},{r:93,n:"Takumi Kanaya",af:72.8,t5:.5,t10:1.9,t20:6.4,c:47.3},{r:94,n:"Taylor Moore",af:73.3,t5:.5,t10:2,t20:6.5,c:47.4},{r:95,n:"Zach Bauchou",af:74.1,t5:.6,t10:2.2,t20:7.1,c:48.3},{r:96,n:"Rasmus Højgaard",af:75.1,t5:.7,t10:2.6,t20:8.1,c:50.6},{r:97,n:"S.H. Kim",af:76.5,t5:0,t10:.2,t20:1.2,c:27.1},{r:98,n:"Andrew Putnam",af:77.2,t5:.4,t10:1.3,t20:4.9,c:43.7},{r:99,n:"Emiliano Grillo",af:77.3,t5:.4,t10:1.5,t20:5.2,c:44.2},{r:100,n:"Andrew Novak",af:77.7,t5:.4,t10:1.6,t20:5.5,c:45.1},{r:101,n:"Vince Whaley",af:77.9,t5:.1,t10:.5,t20:2.5,c:35.2},{r:102,n:"Max Homa",af:79.7,t5:.4,t10:1.4,t20:5.1,c:43.9},{r:103,n:"Cam Davis",af:82.1,t5:0,t10:0,t20:0,c:9.8},{r:104,n:"Danny Walker",af:83,t5:0,t10:.2,t20:1,c:25.8},{r:105,n:"Brian Harman",af:84.6,t5:.2,t10:.9,t20:3.4,c:38.9},{r:106,n:"Marco Penge",af:84.6,t5:0,t10:0,t20:.2,c:14.8},{r:107,n:"Justin Rose",af:85.3,t5:.3,t10:1.2,t20:4.6,c:42.6},{r:108,n:"Mark Hubbard",af:86,t5:.2,t10:.8,t20:3.2,c:37.9},{r:109,n:"Kristoffer Reitan",af:88.2,t5:0,t10:0,t20:.1,c:10.9},{r:110,n:"Jhonattan Vegas",af:90.9,t5:.1,t10:.4,t20:1.6,c:30.2},{r:111,n:"Davis Riley",af:92.7,t5:0,t10:0,t20:.2,c:13.8},{r:112,n:"Joe Highsmith",af:94.7,t5:0,t10:0,t20:.1,c:12.9},{r:113,n:"Aldrich Potgieter",af:95.2,t5:.1,t10:.3,t20:1.1,c:27.3},{r:114,n:"Karl Vilips",af:102.4,t5:0,t10:.1,t20:.5,c:21.1},{r:115,n:"Matthieu Pavon",af:102.4,t5:0,t10:.1,t20:.4,c:18.9},{r:116,n:"Adam Schenk",af:104,t5:0,t10:.1,t20:.3,c:18},{r:117,n:"Brian Campbell",af:104.2,t5:0,t10:0,t20:0,c:4.3}];
+let players=P.map(p=>({rank:p.r,name:p.n,avgFinish:p.af,top5:p.t5,top10:p.t10,top20:p.t20,cut:p.c}));
+let rawStats={},rawStatCols=[];
+const SL={"AVGSGAPP":"SG: Approach","AVGSGPutting":"SG: Putting","AVGSGOffTee":"SG: Off Tee","AVGSGAGR":"SG: Around Green","Scrambling%":"Scrambling %","BirdieOrBetter%":"Birdie+ %","GreensInRegulation%":"GIR %","ScoringAverage":"Scoring Avg","AvgDrivingDistance":"Driving Dist","Par3ScoringAvg":"Par 3 Scoring","Prox175to200":"Prox 175-200","recentFormScore":"Recent Form SG"};
+const LB=new Set(["ScoringAverage","Par3ScoringAvg","Prox175to200"]);
+const COLORS=['#3b82f6','#f97316','#22c55e','#ec4899','#8b5cf6','#06b6d4'];
+let selCmp=[],cBarC=null,cRadC=null,expC=null,srt={col:'rank',asc:true},flt='all',rMode='predictions';
+function tier(r){if(r<=5)return{c:'tier-elite',l:'ELITE'};if(r<=20)return{c:'tier-contender',l:'CONTENDER'};if(r<=45)return{c:'tier-mid',l:'MID-TIER'};if(r<=75)return{c:'tier-long',l:'LONG SHOT'};return{c:'tier-field',l:'FIELD'};}
+function pc(v){return v>=60?'var(--green)':v>=30?'var(--accent)':v>=15?'var(--yellow)':v>=5?'var(--orange)':'var(--muted)';}
+function hs(){return rawStatCols.length>0;}
+
+// CSV uploads
+document.getElementById('csvUpload').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=function(ev){try{const L=ev.target.result.split('\n').filter(l=>l.trim()),H=L[0].split(',').map(h=>h.trim().replace(/\r/g,'')),ni=H.indexOf('Player'),ai=H.indexOf('avgFinish'),t5i=H.indexOf('top5%'),t10i=H.indexOf('top10%'),t20i=H.indexOf('top20%'),ci=H.indexOf('cutProb%');if(ni<0||ai<0){alert('Need Player+avgFinish');return;}const np=[];for(let i=1;i<L.length;i++){const c=L[i].split(',').map(x=>x.trim().replace(/\r/g,''));if(!c[ni])continue;np.push({rank:i,name:c[ni],avgFinish:+c[ai]||0,top5:t5i>=0?+c[t5i]||0:0,top10:t10i>=0?+c[t10i]||0:0,top20:t20i>=0?+c[t20i]||0:0,cut:ci>=0?+c[ci]||0:0});}np.sort((a,b)=>a.avgFinish-b.avgFinish);np.forEach((p,i)=>p.rank=i+1);players=np;selCmp=[];document.getElementById('metaField').textContent=players.length+' players';document.getElementById('uploadStatus').textContent='✓ '+players.length;document.getElementById('uploadStatus').style.color='var(--green)';renderAll();}catch(err){alert(err.message);}};r.readAsText(f);};
+
+document.getElementById('statsUpload').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=function(ev){try{const L=ev.target.result.split('\n').filter(l=>l.trim()),H=L[0].split(',').map(h=>h.trim().replace(/\r/g,'')),ni=H.findIndex(h=>h==='playerName'||h==='Player');if(ni<0){alert('Need playerName or Player column');return;}const skip=new Set(['playerName','Player','yearsOfData','composite']);const sc=H.filter((h,i)=>i!==ni&&!skip.has(h));rawStats={};rawStatCols=sc;for(let i=1;i<L.length;i++){const c=L[i].split(',').map(x=>x.trim().replace(/\r/g,''));const nm=c[ni];if(!nm)continue;const o={};sc.forEach(col=>{const idx=H.indexOf(col);if(idx>=0){const v=parseFloat(c[idx]);o[col]=isNaN(v)?null:v;}});rawStats[nm]=o;}document.getElementById('statsUploadStatus').textContent='✓ '+Object.keys(rawStats).length+' players';document.getElementById('statsUploadStatus').style.color='var(--green)';document.getElementById('statsStatus').textContent='Raw stats: '+sc.length+' loaded';const g=document.getElementById('rawStatsGroup');g.innerHTML='';sc.forEach(c=>{const o=document.createElement('option');o.value='raw_'+c;o.textContent=SL[c]||c;g.appendChild(o);});renderAll();}catch(err){alert(err.message);}};r.readAsText(f);};
+
+// Tabs
+document.querySelectorAll('.tab').forEach(t=>{t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.tab-content').forEach(x=>x.style.display='none');t.classList.add('active');document.getElementById('tab-'+t.dataset.tab).style.display='';if(t.dataset.tab==='explorer')renderExp();if(t.dataset.tab==='compare')renderCL();}});
+
+// Table
+function gf(){let l=[...players];const q=document.getElementById('searchInput').value.toLowerCase();if(q)l=l.filter(p=>p.name.toLowerCase().includes(q));if(flt==='elite')l=l.filter(p=>p.rank<=5);else if(flt==='contender')l=l.filter(p=>p.rank<=20);else if(flt==='bubble')l=l.filter(p=>p.cut>=40&&p.cut<=65);else if(flt==='longshot')l=l.filter(p=>p.rank>50&&p.cut>20);l.sort((a,b)=>{let va=a[srt.col],vb=b[srt.col];if(srt.col==='name'){va=va.toLowerCase();vb=vb.toLowerCase();}return srt.asc?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0);});return l;}
+function renderTbl(){const l=gf(),bd=document.getElementById('predBody');bd.innerHTML=l.map(p=>{const t=tier(p.rank);return`<tr><td style="font-family:'JetBrains Mono',monospace;font-weight:700">${p.rank}</td><td style="font-weight:600">${p.name}</td><td style="font-family:'JetBrains Mono',monospace">${p.avgFinish.toFixed(1)}</td><td><div class="prob-bar"><div class="prob-bar-fill" style="width:${p.top5}%;background:${pc(p.top5)}"></div></div> <span style="font-size:11px;font-family:'JetBrains Mono',monospace">${p.top5.toFixed(1)}%</span></td><td><div class="prob-bar"><div class="prob-bar-fill" style="width:${p.top10}%;background:${pc(p.top10)}"></div></div> <span style="font-size:11px;font-family:'JetBrains Mono',monospace">${p.top10.toFixed(1)}%</span></td><td><div class="prob-bar"><div class="prob-bar-fill" style="width:${p.top20}%;background:${pc(p.top20)}"></div></div> <span style="font-size:11px;font-family:'JetBrains Mono',monospace">${p.top20.toFixed(1)}%</span></td><td><span style="font-family:'JetBrains Mono',monospace;color:${p.cut>=60?'var(--green)':p.cut>=40?'var(--yellow)':'var(--red)'}">${p.cut.toFixed(1)}%</span></td><td><span class="tier-badge ${t.c}">${t.l}</span></td></tr>`;}).join('');}
+document.getElementById('searchInput').oninput=renderTbl;
+document.querySelectorAll('.filter-btn').forEach(b=>{b.onclick=()=>{document.querySelectorAll('.filter-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');flt=b.dataset.filter;renderTbl();}});
+document.querySelectorAll('.pred-table th[data-sort]').forEach(th=>{th.onclick=()=>{const c=th.dataset.sort;if(srt.col===c)srt.asc=!srt.asc;else srt={col:c,asc:c==='name'};document.querySelectorAll('.pred-table th').forEach(t=>{t.classList.remove('sorted');const a=t.querySelector('.arrow');if(a)a.textContent='';});th.classList.add('sorted');const a=th.querySelector('.arrow');if(a)a.textContent=srt.asc?'▲':'▼';renderTbl();}});
+
+// Compare
+function renderCL(){const q=document.getElementById('compareSearch').value.toLowerCase();const l=q?players.filter(p=>p.name.toLowerCase().includes(q)):players.slice(0,50);const c=document.getElementById('compareList');c.innerHTML=l.map(p=>`<div class="player-option ${selCmp.includes(p.name)?'selected':''}" data-name="${p.name}"><div class="dot"></div><span class="prank">#${p.rank}</span><span>${p.name}</span></div>`).join('');c.querySelectorAll('.player-option').forEach(el=>{el.onclick=()=>{const n=el.dataset.name;if(selCmp.includes(n))selCmp=selCmp.filter(x=>x!==n);else if(selCmp.length<3)selCmp.push(n);renderCL();renderCC();};});}
+document.getElementById('compareSearch').oninput=renderCL;
+document.querySelectorAll('#radarToggle button').forEach(b=>{b.onclick=()=>{document.querySelectorAll('#radarToggle button').forEach(x=>x.classList.remove('active'));b.classList.add('active');rMode=b.dataset.mode;renderCC();}});
+
+function renderCC(){const sel=selCmp.map(n=>players.find(p=>p.name===n)).filter(Boolean);const c1=document.getElementById('compareBarChart').getContext('2d'),c2=document.getElementById('compareRadar').getContext('2d');if(cBarC)cBarC.destroy();if(cRadC)cRadC.destroy();const grid=document.getElementById('compareStatsGrid'),nm=document.getElementById('noStatsMsg');
+if(!sel.length){grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="icon">👈</div>Select players to compare</div>';nm.style.display='none';return;}
+cBarC=new Chart(c1,{type:'bar',data:{labels:['Top 5%','Top 10%','Top 20%','Cut%'],datasets:sel.map((p,i)=>({label:p.name,data:[p.top5,p.top10,p.top20,p.cut],backgroundColor:COLORS[i]+'99',borderColor:COLORS[i],borderWidth:1,borderRadius:4}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{family:'DM Sans',size:12}}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.y.toFixed(1)+'%'}}},scales:{x:{ticks:{color:'#64748b'},grid:{color:'rgba(30,41,59,.5)'}},y:{ticks:{color:'#64748b',callback:v=>v+'%',font:{family:'JetBrains Mono',size:11}},grid:{color:'rgba(30,41,59,.5)'}}}}});
+if(rMode==='raw'&&!hs()){nm.style.display='block';document.getElementById('compareRadar').style.display='none';}else{nm.style.display='none';document.getElementById('compareRadar').style.display='block';
+if(rMode==='predictions'){const mt5=Math.max(...players.slice(0,20).map(p=>p.top5),1),mt10=Math.max(...players.slice(0,20).map(p=>p.top10),1),bf=Math.min(...players.map(p=>p.avgFinish)),wf=Math.max(...players.slice(0,40).map(p=>p.avgFinish));cRadC=new Chart(c2,{type:'radar',data:{labels:['Top 5','Top 10','Top 20','Cut%','Avg Finish'],datasets:sel.map((p,i)=>({label:p.name,data:[(p.top5/mt5)*100,(p.top10/mt10)*100,p.top20,p.cut,((wf-p.avgFinish)/(wf-bf))*100],backgroundColor:COLORS[i]+'20',borderColor:COLORS[i],borderWidth:2,pointBackgroundColor:COLORS[i],pointRadius:4}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{family:'DM Sans',size:12}}}},scales:{r:{angleLines:{color:'rgba(30,41,59,.5)'},grid:{color:'rgba(30,41,59,.5)'},pointLabels:{color:'#94a3b8',font:{family:'DM Sans',size:11}},ticks:{display:false},suggestedMin:0,suggestedMax:100}}}});}
+else{const rc=rawStatCols.filter(c=>!LB.has(c)).slice(0,8),av={};rc.forEach(c=>{av[c]={mn:Infinity,mx:-Infinity};Object.values(rawStats).forEach(s=>{if(s[c]!=null){av[c].mn=Math.min(av[c].mn,s[c]);av[c].mx=Math.max(av[c].mx,s[c]);}});});cRadC=new Chart(c2,{type:'radar',data:{labels:rc.map(c=>SL[c]||c),datasets:sel.map((p,i)=>{const st=rawStats[p.name]||{};return{label:p.name,data:rc.map(c=>{if(st[c]==null)return 0;const rng=av[c].mx-av[c].mn;return rng>0?((st[c]-av[c].mn)/rng)*100:50;}),backgroundColor:COLORS[i]+'20',borderColor:COLORS[i],borderWidth:2,pointBackgroundColor:COLORS[i],pointRadius:4};})},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#94a3b8',font:{family:'DM Sans',size:12}}}},scales:{r:{angleLines:{color:'rgba(30,41,59,.5)'},grid:{color:'rgba(30,41,59,.5)'},pointLabels:{color:'#94a3b8',font:{family:'DM Sans',size:10}},ticks:{display:false},suggestedMin:0,suggestedMax:100}}}});}}
+const ms=[{l:'Model Rank',k:'rank',f:v=>'#'+v,lo:true},{l:'Avg Finish',k:'avgFinish',f:v=>v.toFixed(1),lo:true},{l:'Top 5',k:'top5',f:v=>v.toFixed(1)+'%'},{l:'Top 10',k:'top10',f:v=>v.toFixed(1)+'%'},{l:'Top 20',k:'top20',f:v=>v.toFixed(1)+'%'},{l:'Cut',k:'cut',f:v=>v.toFixed(1)+'%'}];
+const rs=hs()?rawStatCols.map(c=>({l:SL[c]||c,k:'raw_'+c,f:v=>v==null?'—':Math.abs(v)<1?v.toFixed(3):v.toFixed(1)+(c.includes('%')?'%':''),lo:LB.has(c),raw:true,col:c})):[];
+grid.innerHTML=[...ms,...rs].map(s=>{const vs=sel.map(p=>s.raw?(rawStats[p.name]||{})[s.col]:p[s.k]);const vv=vs.filter(v=>v!=null);const best=vv.length?(s.lo?Math.min(...vv):Math.max(...vv)):null;return`<div class="stat-compare-card"><div class="label">${s.l}${s.raw?' <span style="color:var(--accent2);font-size:9px">RAW</span>':''}</div><div class="values">${sel.map((p,i)=>{const v=s.raw?(rawStats[p.name]||{})[s.col]:p[s.k];const ib=v!=null&&v===best&&sel.length>1;return`<div class="val-row"><span><span class="legend-dot" style="background:${COLORS[i]}"></span>${p.name}</span><span class="num ${ib?'best':''}">${v!=null?s.f(v):'—'}</span></div>`;}).join('')}</div></div>`;}).join('');}
+
+// Explorer
+function renderExp(){const sk=document.getElementById('explorerStat').value,cv=document.getElementById('explorerCount').value,isR=sk.startsWith('raw_'),rc=isR?sk.slice(4):null;let l;
+if(isR){if(!hs()){const ctx=document.getElementById('explorerChart').getContext('2d');if(expC)expC.destroy();expC=new Chart(ctx,{type:'bar',data:{labels:['Upload player_stats.csv'],datasets:[{data:[0]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});return;}const lo=LB.has(rc);l=players.filter(p=>rawStats[p.name]&&rawStats[p.name][rc]!=null).map(p=>({...p,_v:rawStats[p.name][rc]})).sort((a,b)=>lo?a._v-b._v:b._v-a._v);}
+else{const lo=sk==='avgFinish';l=players.map(p=>({...p,_v:p[sk]})).sort((a,b)=>lo?a._v-b._v:b._v-a._v);}
+if(cv==='all')l=l.filter(p=>p.cut>=40||isR);else l=l.slice(0,+cv);
+const ctx=document.getElementById('explorerChart').getContext('2d');if(expC)expC.destroy();
+const lb=isR?(SL[rc]||rc):{top5:'Top 5 %',top10:'Top 10 %',top20:'Top 20 %',cut:'Cut %',avgFinish:'Avg Finish'}[sk]||sk;
+const isPct=!isR&&sk!=='avgFinish';
+document.querySelector('.bar-chart-inner').style.height=Math.max(400,l.length*22)+'px';
+expC=new Chart(ctx,{type:'bar',data:{labels:l.map(p=>p.name),datasets:[{data:l.map(p=>p._v),backgroundColor:l.map((_,i)=>{const pct=i/l.length;return pct<.15?'rgba(34,197,94,.7)':pct<.35?'rgba(59,130,246,.7)':pct<.6?'rgba(234,179,8,.6)':'rgba(100,116,139,.45)';}),borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const v=c.parsed.x;return isPct?v.toFixed(1)+'%':isR?(Math.abs(v)<1?v.toFixed(3):v.toFixed(2)):v.toFixed(1);}}}},scales:{x:{title:{display:true,text:lb,color:'#64748b',font:{family:'DM Sans',size:12}},ticks:{color:'#64748b',font:{family:'JetBrains Mono',size:10},callback:v=>isPct?v+'%':v},grid:{color:'rgba(30,41,59,.5)'}},y:{ticks:{color:'#e2e8f0',font:{family:'DM Sans',size:11}},grid:{display:false}}}}});}
+document.getElementById('explorerStat').onchange=renderExp;
+document.getElementById('explorerCount').onchange=renderExp;
+
+function renderAll(){renderTbl();renderCL();renderCC();}
+renderAll();
+</script>
+</body>
+</html>
