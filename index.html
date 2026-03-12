@@ -188,7 +188,97 @@ document.getElementById('explorerStat').onchange=renderExp;
 document.getElementById('explorerCount').onchange=renderExp;
 
 function renderAll(){renderTbl();renderCL();renderCC();}
-renderAll();
+
+async function loadCSVFiles() {
+  try {
+
+    // Load predictions CSV
+    const predResponse = await fetch("tournament_predictionsPlayers.csv");
+    const predText = await predResponse.text();
+    parsePredictionsCSV(predText);
+
+    // Load stats CSV
+    const statsResponse = await fetch("stats_data.csv");
+    const statsText = await statsResponse.text();
+    parseStatsCSV(statsText);
+
+    renderAll();
+
+  } catch (err) {
+    console.error("CSV load error:", err);
+  }
+}
+
+
+function parsePredictionsCSV(text){
+
+  const L = text.split('\n').filter(l=>l.trim());
+  const H = L[0].split(',').map(h=>h.trim());
+
+  const ni=H.indexOf('Player');
+  const ai=H.indexOf('avgFinish');
+  const t5i=H.indexOf('top5%');
+  const t10i=H.indexOf('top10%');
+  const t20i=H.indexOf('top20%');
+  const ci=H.indexOf('cutProb%');
+
+  const np=[];
+
+  for(let i=1;i<L.length;i++){
+    const c=L[i].split(',');
+
+    if(!c[ni]) continue;
+
+    np.push({
+      rank:i,
+      name:c[ni],
+      avgFinish:+c[ai]||0,
+      top5:+c[t5i]||0,
+      top10:+c[t10i]||0,
+      top20:+c[t20i]||0,
+      cut:+c[ci]||0
+    });
+  }
+
+  np.sort((a,b)=>a.avgFinish-b.avgFinish);
+  np.forEach((p,i)=>p.rank=i+1);
+
+  players=np;
+}
+
+
+function parseStatsCSV(text){
+
+  const L=text.split('\n').filter(l=>l.trim());
+  const H=L[0].split(',').map(h=>h.trim());
+
+  const ni=H.findIndex(h=>h==='playerName'||h==='Player');
+
+  const skip=new Set(['playerName','Player','yearsOfData','composite']);
+  const sc=H.filter((h,i)=>i!==ni&&!skip.has(h));
+
+  rawStats={};
+  rawStatCols=sc;
+
+  for(let i=1;i<L.length;i++){
+    const c=L[i].split(',');
+    const nm=c[ni];
+
+    if(!nm) continue;
+
+    const o={};
+
+    sc.forEach(col=>{
+      const idx=H.indexOf(col);
+      const v=parseFloat(c[idx]);
+      o[col]=isNaN(v)?null:v;
+    });
+
+    rawStats[nm]=o;
+  }
+}
+
+loadCSVFiles();
 </script>
 </body>
 </html>
