@@ -85,13 +85,7 @@
   <div class="header">
     <div class="header-top"><div class="header-icon">⛳</div><div><h1>2026 THE PLAYERS Championship</h1><div class="sub">TPC Sawgrass · Ponte Vedra Beach, FL · Model Predictions Dashboard</div></div></div>
     <div class="meta"><span id="metaField">117 players</span><span>100K sims</span><span>Cut: Top 65</span><span id="statsStatus">Raw stats: upload CSV</span></div>
-  </div>
-  <div class="upload-bar">
-    <label class="upload-btn" for="csvUpload">📊 Predictions CSV</label><input type="file" id="csvUpload" accept=".csv"><span class="upload-status" id="uploadStatus"></span>
-    <div class="upload-divider"></div>
-    <label class="upload-btn sb" for="statsUpload">🔬 Stats CSV</label><input type="file" id="statsUpload" accept=".csv"><span class="upload-status" id="statsUploadStatus"></span>
-    <span style="font-size:11px;color:var(--muted)">Add <code style="color:var(--accent2)">player_stats.csv</code> for raw stat comparisons</span>
-  </div>
+</div>
   <div class="tabs">
     <button class="tab active" data-tab="predictions">Predictions</button>
     <button class="tab" data-tab="compare">Compare Players</button>
@@ -144,10 +138,6 @@ function tier(r){if(r<=5)return{c:'tier-elite',l:'ELITE'};if(r<=20)return{c:'tie
 function pc(v){return v>=60?'var(--green)':v>=30?'var(--accent)':v>=15?'var(--yellow)':v>=5?'var(--orange)':'var(--muted)';}
 function hs(){return rawStatCols.length>0;}
 
-// CSV uploads
-document.getElementById('csvUpload').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=function(ev){try{const L=ev.target.result.split('\n').filter(l=>l.trim()),H=L[0].split(',').map(h=>h.trim().replace(/\r/g,'')),ni=H.indexOf('Player'),ai=H.indexOf('avgFinish'),t5i=H.indexOf('top5%'),t10i=H.indexOf('top10%'),t20i=H.indexOf('top20%'),ci=H.indexOf('cutProb%');if(ni<0||ai<0){alert('Need Player+avgFinish');return;}const np=[];for(let i=1;i<L.length;i++){const c=L[i].split(',').map(x=>x.trim().replace(/\r/g,''));if(!c[ni])continue;np.push({rank:i,name:c[ni],avgFinish:+c[ai]||0,top5:t5i>=0?+c[t5i]||0:0,top10:t10i>=0?+c[t10i]||0:0,top20:t20i>=0?+c[t20i]||0:0,cut:ci>=0?+c[ci]||0:0});}np.sort((a,b)=>a.avgFinish-b.avgFinish);np.forEach((p,i)=>p.rank=i+1);players=np;selCmp=[];document.getElementById('metaField').textContent=players.length+' players';document.getElementById('uploadStatus').textContent='✓ '+players.length;document.getElementById('uploadStatus').style.color='var(--green)';renderAll();}catch(err){alert(err.message);}};r.readAsText(f);};
-
-document.getElementById('statsUpload').onchange=function(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=function(ev){try{const L=ev.target.result.split('\n').filter(l=>l.trim()),H=L[0].split(',').map(h=>h.trim().replace(/\r/g,'')),ni=H.findIndex(h=>h==='playerName'||h==='Player');if(ni<0){alert('Need playerName or Player column');return;}const skip=new Set(['playerName','Player','yearsOfData','composite']);const sc=H.filter((h,i)=>i!==ni&&!skip.has(h));rawStats={};rawStatCols=sc;for(let i=1;i<L.length;i++){const c=L[i].split(',').map(x=>x.trim().replace(/\r/g,''));const nm=c[ni];if(!nm)continue;const o={};sc.forEach(col=>{const idx=H.indexOf(col);if(idx>=0){const v=parseFloat(c[idx]);o[col]=isNaN(v)?null:v;}});rawStats[nm]=o;}document.getElementById('statsUploadStatus').textContent='✓ '+Object.keys(rawStats).length+' players';document.getElementById('statsUploadStatus').style.color='var(--green)';document.getElementById('statsStatus').textContent='Raw stats: '+sc.length+' loaded';const g=document.getElementById('rawStatsGroup');g.innerHTML='';sc.forEach(c=>{const o=document.createElement('option');o.value='raw_'+c;o.textContent=SL[c]||c;g.appendChild(o);});renderAll();}catch(err){alert(err.message);}};r.readAsText(f);};
 
 // Tabs
 document.querySelectorAll('.tab').forEach(t=>{t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.tab-content').forEach(x=>x.style.display='none');t.classList.add('active');document.getElementById('tab-'+t.dataset.tab).style.display='';if(t.dataset.tab==='explorer')renderExp();if(t.dataset.tab==='compare')renderCL();}});
