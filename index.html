@@ -266,6 +266,15 @@ function parseStatsCSV(text){
 
     rawStats[nm]=o;
   }
+  const g=document.getElementById('rawStatsGroup');
+  g.innerHTML='';
+
+  sc.forEach(c=>{
+    const o=document.createElement('option');
+    o.value='raw_'+c;
+    o.textContent=SL[c]||c;
+    g.appendChild(o);
+  });
 }
 
 loadCSVFiles();
