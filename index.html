@@ -194,7 +194,7 @@ async function loadCSVFiles() {
   try {
 
     // Load predictions CSV
-    const predResponse = await fetch("tournament_predictionsPlayers.csv");
+    const predResponse = await fetch("tournament_predictions.csv");
     const predText = await predResponse.text();
     parsePredictionsCSV(predText);
 
