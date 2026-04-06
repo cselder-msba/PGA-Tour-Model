@@ -87,7 +87,7 @@
 <div class="noise"></div>
 <div class="app">
   <div class="header">
-    <div class="header-top"><div class="header-icon">⛳</div><div><h1>2026 VALSPAR Championship</h1><div class="sub">Innisbrook Resort And Golf Club - Copperhead Course · Palm Harbor, FL · Model Predictions Dashboard</div></div></div>
+    <div class="header-top"><div class="header-icon">⛳</div><div><h1>2026 MASTERS</h1><div class="sub">Augusta National Golf Club · Augusta, GA · Model Predictions Dashboard</div></div></div>
     <div class="meta"><span id="metaField">117 players</span><span>100K sims</span><span>Cut: Top 65</span><span id="statsStatus">Raw stats: upload CSV</span></div>
 </div>
   <div class="tabs">
@@ -194,12 +194,12 @@ async function loadCSVFiles() {
   try {
 
     // Load predictions CSV
-    const predResponse = await fetch("tournament_predictions.csv");
+    const predResponse = await fetch("tournament_predictions_masters.csv");
     const predText = await predResponse.text();
     parsePredictionsCSV(predText);
 
     // Load stats CSV
-    const statsResponse = await fetch("stats_data.csv");
+    const statsResponse = await fetch("stats_data_masters.csv");
     const statsText = await statsResponse.text();
     parseStatsCSV(statsText);
 
